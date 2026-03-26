@@ -4,13 +4,19 @@ import type { CorrelationData } from "@/lib/types";
 
 export function CorrelationMatrixView({ data }: { data: CorrelationData }) {
   const getColor = (v: number): string => {
-    if (v >= 0.8) return "bg-green-600/80";
-    if (v >= 0.5) return "bg-green-600/40";
-    if (v >= 0.2) return "bg-green-600/20";
-    if (v >= -0.2) return "bg-gray-700/30";
-    if (v >= -0.5) return "bg-red-600/20";
-    if (v >= -0.8) return "bg-red-600/40";
-    return "bg-red-600/80";
+    if (v >= 0.8) return "#166534cc";
+    if (v >= 0.5) return "#16653466";
+    if (v >= 0.2) return "#16653433";
+    if (v >= -0.2) return "#37415180";
+    if (v >= -0.5) return "#991b1b33";
+    if (v >= -0.8) return "#991b1b66";
+    return "#991b1bcc";
+  };
+
+  const getTextColor = (v: number): string => {
+    if (Math.abs(v) >= 0.8) return "#fff";
+    if (Math.abs(v) >= 0.5) return "#e2e8f0";
+    return "#94a3b8";
   };
 
   return (
@@ -21,38 +27,54 @@ export function CorrelationMatrixView({ data }: { data: CorrelationData }) {
         <span className="text-xs text-gray-500">(3-month daily returns)</span>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="text-xs">
-          <thead>
-            <tr>
-              <th className="p-1"></th>
-              {data.symbols.map((s) => (
-                <th key={s} className="p-1 text-center text-blue-300 font-mono" style={{ writingMode: "vertical-rl", height: 60 }}>
-                  {s}
-                </th>
+      <div className="overflow-x-auto pb-2">
+        <div style={{ display: "inline-grid", gridTemplateColumns: `60px repeat(${data.symbols.length}, 52px)`, gap: 2 }}>
+          {/* Header row */}
+          <div />
+          {data.symbols.map((s) => (
+            <div key={`h-${s}`} style={{ fontSize: 10, fontFamily: "monospace", color: "#93c5fd", textAlign: "center", padding: "4px 0", fontWeight: 700 }}>
+              {s}
+            </div>
+          ))}
+
+          {/* Data rows */}
+          {data.symbols.map((row, i) => (
+            <>
+              <div key={`label-${row}`} style={{ fontSize: 10, fontFamily: "monospace", color: "#93c5fd", fontWeight: 700, display: "flex", alignItems: "center", paddingRight: 4 }}>
+                {row}
+              </div>
+              {data.matrix[i].map((val, j) => (
+                <div
+                  key={`${i}-${j}`}
+                  style={{
+                    width: 50,
+                    height: 32,
+                    backgroundColor: getColor(val),
+                    color: getTextColor(val),
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10,
+                    fontWeight: i === j ? 800 : 600,
+                    fontFamily: "monospace",
+                    borderRadius: 4,
+                    border: i === j ? "1px solid #3b82f6" : "none",
+                  }}
+                  title={`${row} vs ${data.symbols[j]}: ${val.toFixed(2)}`}
+                >
+                  {val.toFixed(2)}
+                </div>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.symbols.map((row, i) => (
-              <tr key={row}>
-                <td className="p-1 font-mono text-blue-300 font-bold pr-2">{row}</td>
-                {data.matrix[i].map((val, j) => (
-                  <td key={j} className={`correlation-cell ${getColor(val)} ${i === j ? "font-bold" : ""}`}>
-                    {val.toFixed(2)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </>
+          ))}
+        </div>
       </div>
 
       <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
         <span>Legend:</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-600/80"></span> Strong negative</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-700/30"></span> Low correlation</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-600/80"></span> Strong positive</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: "#991b1bcc" }} /> Strong negative</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: "#37415180" }} /> Low correlation</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{ background: "#166534cc" }} /> Strong positive</span>
       </div>
     </div>
   );
