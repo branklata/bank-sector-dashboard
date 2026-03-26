@@ -66,7 +66,7 @@ const HOUSING: FredConfig[] = [
 ];
 
 const FED_WATCH: FredConfig[] = [
-  { id: "PCEPILFE", name: "Core PCE YoY (%)", multiply: 1, lookback: 120, bullishTest: (v) => v < 2.5, bearishTest: (v) => v > 3.5, bullishLabel: "< 2.5%", bearishLabel: "> 3.5%", source: "FRED: PCEPILFE" },
+  // Core PCE is calculated via YoY below, not here
   { id: "JTSJOL", name: "JOLTS Job Openings (M)", multiply: 0.001, lookback: 120, bullishTest: (v) => v > 8, bearishTest: (v) => v < 6, bullishLabel: "> 8M", bearishLabel: "< 6M", source: "FRED: JTSJOL" },
   { id: "CES0500000003", name: "Avg Hourly Earnings ($)", multiply: 1, lookback: 90, bullishTest: () => false, bearishTest: () => false, bullishLabel: "Moderate growth", bearishLabel: "Accelerating", source: "FRED: CES0500000003" },
   { id: "T5YIE", name: "5Y Breakeven Inflation (%)", multiply: 1, lookback: 30, bullishTest: (v) => v >= 2 && v <= 2.5, bearishTest: (v) => v > 3, bullishLabel: "2.0-2.5% (anchored)", bearishLabel: "> 3% (unanchored)", source: "FRED: T5YIE" },
@@ -314,7 +314,7 @@ function computeFearGreed(
 
 export async function fetchDashboardData(): Promise<DashboardData> {
   // Fetch all FRED data in parallel
-  const [creditSpreads, rates, macro, housing, fedWatch, consumerCredit, bankMetrics, cpiYoY] =
+  const [creditSpreads, rates, macro, housing, fedWatch, consumerCredit, bankMetrics, cpiYoY, corePceYoY] =
     await Promise.all([
       fetchFredIndicators(CREDIT_SPREADS),
       fetchFredIndicators(RATES),
@@ -324,7 +324,24 @@ export async function fetchDashboardData(): Promise<DashboardData> {
       fetchFredIndicators(CONSUMER_CREDIT),
       fetchFredIndicators(BANK_METRICS),
       calculateYoY("CPIAUCSL"),
+      calculateYoY("PCEPILFE"),
     ]);
+
+  // Add Core PCE YoY to Fed Watch (the Fed's preferred inflation measure)
+  if (corePceYoY.latest !== null) {
+    fedWatch.unshift({
+      name: "Core PCE YoY (%)",
+      category: "",
+      value: corePceYoY.latest,
+      prior: corePceYoY.history.length >= 2 ? corePceYoY.history[corePceYoY.history.length - 2].value : null,
+      change: null,
+      signal: corePceYoY.latest < 2.5 ? "bullish" : corePceYoY.latest > 3.5 ? "bearish" : "neutral",
+      bullishThreshold: "< 2.5%",
+      bearishThreshold: "> 3.5%",
+      source: "FRED: PCEPILFE (calculated YoY)",
+      history: corePceYoY.history,
+    });
+  }
 
   // Add CPI YoY to macro
   if (cpiYoY.latest !== null) {
