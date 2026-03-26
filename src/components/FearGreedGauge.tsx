@@ -3,7 +3,9 @@
 import type { FearGreedData } from "@/lib/types";
 
 export function FearGreedGauge({ data }: { data: FearGreedData }) {
-  const rotation = -90 + (data.score / 100) * 180;
+  // Angle in degrees: score 0 = 180° (left), score 50 = 270° (up), score 100 = 360° (right)
+  const angleDeg = 180 + (data.score / 100) * 180;
+  const angleRad = (angleDeg * Math.PI) / 180;
   const color =
     data.score >= 75 ? "#22c55e" :
     data.score >= 55 ? "#86efac" :
@@ -31,8 +33,8 @@ export function FearGreedGauge({ data }: { data: FearGreedData }) {
             {/* Needle */}
             <line
               x1="100" y1="100"
-              x2={100 + 60 * Math.cos((rotation * Math.PI) / 180)}
-              y2={100 + 60 * Math.sin((rotation * Math.PI) / 180)}
+              x2={100 + 60 * Math.cos(angleRad)}
+              y2={100 + 60 * Math.sin(angleRad)}
               stroke={color} strokeWidth="3" strokeLinecap="round"
             />
             <circle cx="100" cy="100" r="6" fill={color} />
