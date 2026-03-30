@@ -37,8 +37,9 @@ export function IndicatorTable({ title, icon, indicators, onStar, starred }: Pro
                 <th className="text-left py-2 pr-4 w-6"></th>
                 <th className="text-left py-2 pr-4">Indicator</th>
                 <th className="text-right py-2 px-3">Current</th>
-                <th className="text-right py-2 px-3">Prior</th>
-                <th className="text-right py-2 px-3">Change</th>
+                <th className="text-right py-2 px-2">1D</th>
+                <th className="text-right py-2 px-2">1W</th>
+                <th className="text-right py-2 px-2">1M</th>
                 <th className="text-center py-2 px-3">Signal</th>
                 <th className="text-center py-2 px-3">12M Trend</th>
                 <th className="text-left py-2 px-3 text-xs">Thresholds</th>
@@ -63,15 +64,14 @@ export function IndicatorTable({ title, icon, indicators, onStar, starred }: Pro
                     <td className="text-right py-2 px-3 font-mono font-semibold text-white">
                       {ind.value !== null ? formatValue(ind.value) : "--"}
                     </td>
-                    <td className="text-right py-2 px-3 font-mono text-gray-400">
-                      {ind.prior !== null ? formatValue(ind.prior) : "--"}
+                    <td className="text-right py-2 px-2 font-mono text-xs">
+                      <ChangeCell value={ind.change1d} />
                     </td>
-                    <td className="text-right py-2 px-3 font-mono">
-                      {ind.change !== null ? (
-                        <span className={ind.change > 0 ? "text-green-400" : ind.change < 0 ? "text-red-400" : "text-gray-400"}>
-                          {ind.change > 0 ? "+" : ""}{formatValue(ind.change)}
-                        </span>
-                      ) : "--"}
+                    <td className="text-right py-2 px-2 font-mono text-xs">
+                      <ChangeCell value={ind.change1w} />
+                    </td>
+                    <td className="text-right py-2 px-2 font-mono text-xs">
+                      <ChangeCell value={ind.change1m} />
                     </td>
                     <td className="text-center py-2 px-3">
                       <SignalBadge signal={ind.signal} />
@@ -102,6 +102,16 @@ export function IndicatorTable({ title, icon, indicators, onStar, starred }: Pro
         />
       )}
     </div>
+  );
+}
+
+function ChangeCell({ value }: { value: number | null }) {
+  if (value === null || value === undefined) return <span className="text-gray-600">--</span>;
+  const color = value > 0 ? "text-green-400" : value < 0 ? "text-red-400" : "text-gray-400";
+  return (
+    <span className={color}>
+      {value > 0 ? "+" : ""}{formatValue(value)}
+    </span>
   );
 }
 

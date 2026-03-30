@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MarketTicker } from "@/lib/types";
-import { SignalBadge, MASignal } from "./SignalBadge";
+import { SignalBadge } from "./SignalBadge";
 import { SparklineChart } from "./SparklineChart";
 import { HistoryModal } from "./HistoryModal";
 
@@ -13,6 +13,12 @@ interface Props {
   showMAs?: boolean;
   onStar?: (symbol: string) => void;
   starred?: Set<string>;
+}
+
+function ChangePctCell({ value }: { value: number | null }) {
+  if (value === null || value === undefined) return <span className="text-gray-600">--</span>;
+  const color = value > 0 ? "text-green-400" : value < 0 ? "text-red-400" : "text-gray-400";
+  return <span className={color}>{value > 0 ? "+" : ""}{value.toFixed(1)}%</span>;
 }
 
 export function MarketTable({ title, icon, tickers, showMAs = true, onStar, starred }: Props) {
@@ -40,8 +46,9 @@ export function MarketTable({ title, icon, tickers, showMAs = true, onStar, star
                 <th className="text-left py-2 pr-3">Symbol</th>
                 <th className="text-left py-2 pr-3">Name</th>
                 <th className="text-right py-2 px-2">Price</th>
-                <th className="text-right py-2 px-2">Change</th>
-                <th className="text-right py-2 px-2">%</th>
+                <th className="text-right py-2 px-2">1D %</th>
+                <th className="text-right py-2 px-2">1W %</th>
+                <th className="text-right py-2 px-2">1M %</th>
                 {showMAs && (
                   <>
                     <th className="text-right py-2 px-2">50 MA</th>
@@ -73,11 +80,14 @@ export function MarketTable({ title, icon, tickers, showMAs = true, onStar, star
                     <td className="text-right py-2 px-2 font-mono font-semibold text-white">
                       {t.price ? t.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "--"}
                     </td>
-                    <td className={`text-right py-2 px-2 font-mono ${(t.change ?? 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {t.change !== null ? `${t.change >= 0 ? "+" : ""}${t.change.toFixed(2)}` : "--"}
+                    <td className="text-right py-2 px-2 font-mono text-xs">
+                      <ChangePctCell value={t.change1dPct} />
                     </td>
-                    <td className={`text-right py-2 px-2 font-mono ${(t.changePct ?? 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {t.changePct !== null ? `${t.changePct >= 0 ? "+" : ""}${t.changePct.toFixed(2)}%` : "--"}
+                    <td className="text-right py-2 px-2 font-mono text-xs">
+                      <ChangePctCell value={t.change1wPct} />
+                    </td>
+                    <td className="text-right py-2 px-2 font-mono text-xs">
+                      <ChangePctCell value={t.change1mPct} />
                     </td>
                     {showMAs && (
                       <>

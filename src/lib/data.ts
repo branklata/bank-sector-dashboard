@@ -150,6 +150,19 @@ const FACTORS = [
 
 // ── Helpers ──
 
+function findValueDaysAgo(history: { date: string; value: number }[], daysAgo: number): number | null {
+  if (history.length === 0) return null;
+  const target = new Date();
+  target.setDate(target.getDate() - daysAgo);
+  const targetStr = target.toISOString().split("T")[0];
+  // Find closest date on or before the target
+  let best: { date: string; value: number } | null = null;
+  for (const h of history) {
+    if (h.date <= targetStr) best = h;
+  }
+  return best?.value ?? null;
+}
+
 async function fetchFredIndicators(configs: FredConfig[]): Promise<Indicator[]> {
   const results = await Promise.allSettled(
     configs.map(async (c) => {
@@ -159,11 +172,18 @@ async function fetchFredIndicators(configs: FredConfig[]): Promise<Indicator[]> 
       ]);
       const val = current.latest !== null ? Math.round(current.latest * c.multiply * 100) / 100 : null;
 
-      // Monthly resample for history
-      const monthlyHist = resampleMonthly(history).map((h) => ({
+      const scaledHistory = history.map((h) => ({
         date: h.date,
         value: Math.round(h.value * c.multiply * 100) / 100,
       }));
+
+      // Monthly resample for chart display
+      const monthlyHist = resampleMonthly(scaledHistory);
+
+      // Calculate 1D, 1W, 1M changes from daily history
+      const val1d = findValueDaysAgo(scaledHistory, 1);
+      const val1w = findValueDaysAgo(scaledHistory, 7);
+      const val1m = findValueDaysAgo(scaledHistory, 30);
 
       const signal: Indicator["signal"] =
         val === null ? "neutral" : c.bullishTest(val) ? "bullish" : c.bearishTest(val) ? "bearish" : "neutral";
@@ -172,10 +192,11 @@ async function fetchFredIndicators(configs: FredConfig[]): Promise<Indicator[]> 
         name: c.name,
         category: "",
         value: val,
-        prior: monthlyHist.length >= 2 ? monthlyHist[monthlyHist.length - 2].value : null,
-        change: val !== null && monthlyHist.length >= 2
-          ? Math.round((val - monthlyHist[monthlyHist.length - 2].value) * 100) / 100
-          : null,
+        prior: val1w,
+        change: val !== null && val1w !== null ? Math.round((val - val1w) * 100) / 100 : null,
+        change1d: val !== null && val1d !== null ? Math.round((val - val1d) * 100) / 100 : null,
+        change1w: val !== null && val1w !== null ? Math.round((val - val1w) * 100) / 100 : null,
+        change1m: val !== null && val1m !== null ? Math.round((val - val1m) * 100) / 100 : null,
         signal,
         bullishThreshold: c.bullishLabel,
         bearishThreshold: c.bearishLabel,
@@ -231,12 +252,30 @@ async function fetchMarketTickers(
       ? resampleMonthly(hist.map((h) => ({ date: h.date, value: h.close })))
       : [];
 
+    // 1D, 1W, 1M price changes
+    const price1d = hist.length >= 2 ? hist[hist.length - 2].close : null;
+    const price1w = findValueDaysAgo(hist.map((h) => ({ date: h.date, value: h.close })), 7);
+    const price1m = findValueDaysAgo(hist.map((h) => ({ date: h.date, value: h.close })), 30);
+
+    const change1d = price !== null && price1d !== null ? Math.round((price - price1d) * 100) / 100 : null;
+    const change1dPct = price !== null && price1d !== null && price1d !== 0 ? Math.round(((price - price1d) / price1d) * 1000) / 10 : null;
+    const change1w = price !== null && price1w !== null ? Math.round((price - price1w) * 100) / 100 : null;
+    const change1wPct = price !== null && price1w !== null && price1w !== 0 ? Math.round(((price - price1w) / price1w) * 1000) / 10 : null;
+    const change1m = price !== null && price1m !== null ? Math.round((price - price1m) * 100) / 100 : null;
+    const change1mPct = price !== null && price1m !== null && price1m !== 0 ? Math.round(((price - price1m) / price1m) * 1000) / 10 : null;
+
     return {
       symbol: t.symbol,
       name: t.name,
       price,
       change: q?.change ?? null,
       changePct: q?.changePct ?? null,
+      change1d,
+      change1dPct,
+      change1w,
+      change1wPct,
+      change1m,
+      change1mPct,
       ...mas,
       aboveMa50,
       aboveMa100,
@@ -329,33 +368,41 @@ export async function fetchDashboardData(): Promise<DashboardData> {
 
   // Add Core PCE YoY to Fed Watch (the Fed's preferred inflation measure)
   if (corePceYoY.latest !== null) {
+    const h = corePceYoY.history;
     fedWatch.unshift({
       name: "Core PCE YoY (%)",
       category: "",
       value: corePceYoY.latest,
-      prior: corePceYoY.history.length >= 2 ? corePceYoY.history[corePceYoY.history.length - 2].value : null,
+      prior: h.length >= 2 ? h[h.length - 2].value : null,
       change: null,
+      change1d: null,
+      change1w: null,
+      change1m: h.length >= 2 ? Math.round((corePceYoY.latest - h[h.length - 2].value) * 100) / 100 : null,
       signal: corePceYoY.latest < 2.5 ? "bullish" : corePceYoY.latest > 3.5 ? "bearish" : "neutral",
       bullishThreshold: "< 2.5%",
       bearishThreshold: "> 3.5%",
       source: "FRED: PCEPILFE (calculated YoY)",
-      history: corePceYoY.history,
+      history: h,
     });
   }
 
   // Add CPI YoY to macro
   if (cpiYoY.latest !== null) {
+    const h = cpiYoY.history;
     macro.push({
       name: "CPI YoY (%)",
       category: "",
       value: cpiYoY.latest,
-      prior: cpiYoY.history.length >= 2 ? cpiYoY.history[cpiYoY.history.length - 2].value : null,
+      prior: h.length >= 2 ? h[h.length - 2].value : null,
       change: null,
+      change1d: null,
+      change1w: null,
+      change1m: h.length >= 2 ? Math.round((cpiYoY.latest - h[h.length - 2].value) * 100) / 100 : null,
       signal: cpiYoY.latest < 3 ? "bullish" : cpiYoY.latest > 4 ? "bearish" : "neutral",
       bullishThreshold: "< 3.0%",
       bearishThreshold: "> 4.0%",
       source: "FRED: CPIAUCSL (calculated)",
-      history: cpiYoY.history,
+      history: h,
     });
   }
 

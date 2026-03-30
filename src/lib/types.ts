@@ -4,6 +4,9 @@ export interface Indicator {
   value: number | string | null;
   prior: number | string | null;
   change: number | null;
+  change1d: number | null;
+  change1w: number | null;
+  change1m: number | null;
   signal: "bullish" | "bearish" | "neutral" | "watch";
   bullishThreshold: string;
   bearishThreshold: string;
@@ -17,6 +20,12 @@ export interface MarketTicker {
   price: number | null;
   change: number | null;
   changePct: number | null;
+  change1d: number | null;
+  change1dPct: number | null;
+  change1w: number | null;
+  change1wPct: number | null;
+  change1m: number | null;
+  change1mPct: number | null;
   ma50: number | null;
   ma100: number | null;
   ma200: number | null;
